@@ -40,43 +40,50 @@ public class DocumentationApplication {
         SpringApplication app = new SpringApplication(DocumentationApplication.class);
         Environment env = app.run(args).getEnvironment();
        
-        Workspace workspace = new Workspace("My Company - Monolithic", "An example of a modular monolithic architecture, which includes asynchronous and parallel behaviour.");
+        Workspace workspace = new Workspace("My Company - Monolithic", "An example of a modular monolithic architecture.");
         Model model = workspace.getModel();
         // ## System ##
-        SoftwareSystem mySoftwareSystem = model.addSoftwareSystem("My Company Information System", "Stores information");
+        SoftwareSystem mySoftwareSystem = model.addSoftwareSystem("My Company Information System", "An enterprise application that enables users to manage blog posts, project information, customers and other data");
+        mySoftwareSystem.setLocation(Location.Internal);
         Person user = model.addPerson("User", "A user");
         user.uses(mySoftwareSystem, "Uses");
         // ## UI  ##
         Container uiApplication = mySoftwareSystem.addContainer("UI Application", "A user interface that allows users to manage their profile, blogs and projects via web browser", "JavaScript, HTML, Angular4");
-        uiApplication.addTags(MONOLITH_TAG);
+        uiApplication.setUrl("https://github.com/ivans-innovation-lab/my-company-angular-fe");
         user.uses(uiApplication, "Uses");
         // ## API  ##
-        Container webApplication = mySoftwareSystem.addContainer("Web Application (REST API)", "A REST API that allows users to manage their profile, blogs and projects", "Java, Spring Boot, Spring Data Rest");
-        user.uses(webApplication, "Uses");
-        uiApplication.uses(webApplication, "as REST API");
+        Container webApplication = mySoftwareSystem.addContainer("Web Application (REST API)", "A REST API that allows users to manage their profile, blogs and projects", "HTTP, Java, Spring Boot, Spring Data Rest");
+        webApplication.setUrl("https://github.com/ivans-innovation-lab/my-company-monolith");
+        webApplication.addTags(MONOLITH_TAG);
+        uiApplication.uses(webApplication, "Consume");
         // ## DB ##
         Container database = mySoftwareSystem.addContainer("Database", "Stores all events (evensourcing), and materialized vies.", "Relational database");
         database.addTags(DATASTORE_TAG);
         webApplication.uses(database, "Store events and data projections", "SQL", InteractionStyle.Synchronous);
 
-        Component webComponent = webApplication.addComponent("Web Component", "Exposes a REST API on top of command gateway and materialized views");
+        Component webComponent = webApplication.addComponent("Web Component", "Exposes a REST API on top of command gateway and materialized views", "HTTP, Java, Spring Data Rest");
         user.uses(webComponent, "Uses");
+        webComponent.setUrl("https://github.com/ivans-innovation-lab/my-company-monolith/tree/master/src/main/java/com/idugalic");
 
-        Component projectCommandSideComponent = webApplication.addComponent("Project Command Side Component" , "Processes 'project' commands. The execution of these commands results in Events being generated which are persisted and propagated out to components");
+        Component projectCommandSideComponent = webApplication.addComponent("Project Command Side Component" , "Processes commands and persists and propagates Events", "Java, Spring, Axonframework");
         webComponent.uses(projectCommandSideComponent, "Send commands");
+        projectCommandSideComponent.setUrl("https://github.com/ivans-innovation-lab/my-company-project-domain");
         projectCommandSideComponent.uses(database, "Event store");
 
-        Component blogPostCommandSideComponent = webApplication.addComponent("BlogPost Command Side Component" , "Processes 'blog' commands. The execution of these commands results in Events being generated which are persisted and propagated out to components");
+        Component blogPostCommandSideComponent = webApplication.addComponent("BlogPost Command Side Component" , "Processes commands and persists and propagates Events", "Java, Spring, Axonframework");
         webComponent.uses(blogPostCommandSideComponent, "Send commands");
+        blogPostCommandSideComponent.setUrl("https://github.com/ivans-innovation-lab/my-company-blog-domain");
         blogPostCommandSideComponent.uses(database, "Event store");
 
-        Component projectQuerySideComponent = webApplication.addComponent("Project Query Side Component" , "Event-listener and processor. Builds and maintains a materialized view which tracks the state of the Project aggregate");
+        Component projectQuerySideComponent = webApplication.addComponent("Project Query Side Component" , "Event-listener and processor. Builds and maintains a materialized view which tracks the state of the Project aggregate", "Java, Spring, Axonframework");
         webComponent.uses(projectQuerySideComponent, "Read materialized view");
-        projectQuerySideComponent.uses(database, "Subscribe to event store and write materialized view");
+        projectQuerySideComponent.uses(database, "Subscribes to event store and write materialized view");
+        projectQuerySideComponent.setUrl("https://github.com/ivans-innovation-lab/my-company-project-materialized-view");
 
-        Component blogPostQuerySideComponent = webApplication.addComponent("Blog Post Query Side Component" , "Event-listener and processor. Builds and maintains a materialized view which tracks the state of the Blog aggregate");
+        Component blogPostQuerySideComponent = webApplication.addComponent("Blog Post Query Side Component" , "Event-listener and processor. Builds and maintains a materialized view which tracks the state of the Blog aggregate", "Java, Spring, Axonframework");
         webComponent.uses(blogPostQuerySideComponent, "Read materialized view");
-        blogPostQuerySideComponent.uses(database, "Subscribe to event store and write materialized view");
+        blogPostQuerySideComponent.uses(database, "Subscribes to event store and write materialized view");
+        blogPostQuerySideComponent.setUrl("https://github.com/ivans-innovation-lab/my-company-blog-materialized-view");
 
         // ## Create views ##
         ViewSet views = workspace.getViews();
