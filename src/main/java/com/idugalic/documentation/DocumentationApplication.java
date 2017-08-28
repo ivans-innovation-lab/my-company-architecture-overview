@@ -113,7 +113,7 @@ public class DocumentationApplication {
         LOG.info("### Structurizr api Secret: " + apiSecret);
         
         StructurizrClient structurizrClient = new StructurizrClient(apiKey, apiSecret);
-        structurizrClient.setMergeFromRemote(false);
+        structurizrClient.setMergeFromRemote(true);
         structurizrClient.putWorkspace(workspaceId, workspace);
     }
     
