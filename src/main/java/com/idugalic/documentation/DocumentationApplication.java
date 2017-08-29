@@ -86,13 +86,13 @@ public class DocumentationApplication {
         Component projectQuerySideComponent = webApplication.addComponent("Project Query Side Component" , "Event-listener and processor. Builds and maintains a materialized view which tracks the state of the Project aggregate", "Java, Spring, Axonframework");
         webComponent.uses(projectQuerySideComponent, "Read materialized view");
         projectQuerySideComponent.uses(eventSore, "Subscribes to events","SQL",InteractionStyle.Asynchronous);
-        projectQuerySideComponent.uses(database, "Write materialized views by handling the events", "SQL",InteractionStyle.Synchronous);
+        projectQuerySideComponent.uses(database, "Write materialized views by handling the events / Query by user", "SQL",InteractionStyle.Synchronous);
         projectQuerySideComponent.setUrl("https://github.com/ivans-innovation-lab/my-company-project-materialized-view");
 
         Component blogPostQuerySideComponent = webApplication.addComponent("Blog Post Query Side Component" , "Event-listener and processor. Builds and maintains a materialized view which tracks the state of the Blog aggregate", "Java, Spring, Axonframework");
         webComponent.uses(blogPostQuerySideComponent, "Read materialized view");
         blogPostQuerySideComponent.uses(eventSore, "Subscribes to events","SQL",InteractionStyle.Asynchronous);
-        blogPostQuerySideComponent.uses(database, "Write materialized views by handling the events", "SQL",InteractionStyle.Synchronous);
+        blogPostQuerySideComponent.uses(database, "Write materialized views by handling the events / Query by user", "SQL",InteractionStyle.Synchronous);
         blogPostQuerySideComponent.setUrl("https://github.com/ivans-innovation-lab/my-company-blog-materialized-view");
 
         // # Views #
