@@ -39,7 +39,7 @@ public class DocumentationApplication {
     public static void main(String[] args) throws Exception {
         SpringApplication app = new SpringApplication(DocumentationApplication.class);
         Environment env = app.run(args).getEnvironment();
-       
+        // # Workspace #
         Workspace workspace = new Workspace("My Company - Monolithic", "An example of a modular monolithic architecture.");
         Model model = workspace.getModel();
         // ## System ##
@@ -53,54 +53,80 @@ public class DocumentationApplication {
         user.uses(uiApplication, "Uses");
         // ## API  ##
         Container webApplication = mySoftwareSystem.addContainer("Web Application (REST API)", "A REST API that allows users to manage their profile, blogs and projects", "HTTP, Java, Spring Boot, Spring Data Rest");
-        webApplication.setUrl("https://github.com/ivans-innovation-lab/my-company-monolith");
+            webApplication.setUrl("https://github.com/ivans-innovation-lab/my-company-monolith");
         webApplication.addTags(MONOLITH_TAG);
         uiApplication.uses(webApplication, "Consume");
         // ## DB ##
-        Container database = mySoftwareSystem.addContainer("Database", "Stores all events (evensourcing), and materialized vies.", "Relational database");
+        Container database = mySoftwareSystem.addContainer("Database", "Stores materialized vies.", "Relational database");
         database.addTags(DATASTORE_TAG);
-        webApplication.uses(database, "Store events and data projections", "SQL", InteractionStyle.Synchronous);
+        webApplication.uses(database, "Read data projections", "SQL", InteractionStyle.Synchronous);
+        webApplication.uses(database, "Subscribes to events and write data projections", "SQL", InteractionStyle.Synchronous);
+        // ## Event store DB ##
+        Container eventSore = mySoftwareSystem.addContainer("Event Store", "Stores all events (evensourcing)", "Relational database");
+        eventSore.addTags(DATASTORE_TAG);
+        webApplication.uses(eventSore, "Triggers/Persists events", "SQL", InteractionStyle.Synchronous);
+        webApplication.uses(eventSore, "Subscribes to events", "SQL", InteractionStyle.Asynchronous);
 
+        // # Components #
         Component webComponent = webApplication.addComponent("Web Component", "Exposes a REST API on top of command gateway and materialized views", "HTTP, Java, Spring Data Rest");
         user.uses(webComponent, "Uses");
+        uiApplication.uses(webComponent, "Uses");
         webComponent.setUrl("https://github.com/ivans-innovation-lab/my-company-monolith/tree/master/src/main/java/com/idugalic");
 
         Component projectCommandSideComponent = webApplication.addComponent("Project Command Side Component" , "Processes commands and persists and propagates Events", "Java, Spring, Axonframework");
         webComponent.uses(projectCommandSideComponent, "Send commands");
         projectCommandSideComponent.setUrl("https://github.com/ivans-innovation-lab/my-company-project-domain");
-        projectCommandSideComponent.uses(database, "Event store");
+        projectCommandSideComponent.uses(eventSore, "Triggers/Persists events");
 
         Component blogPostCommandSideComponent = webApplication.addComponent("BlogPost Command Side Component" , "Processes commands and persists and propagates Events", "Java, Spring, Axonframework");
         webComponent.uses(blogPostCommandSideComponent, "Send commands");
         blogPostCommandSideComponent.setUrl("https://github.com/ivans-innovation-lab/my-company-blog-domain");
-        blogPostCommandSideComponent.uses(database, "Event store");
+        blogPostCommandSideComponent.uses(eventSore, "Triggers/Persists events");
 
         Component projectQuerySideComponent = webApplication.addComponent("Project Query Side Component" , "Event-listener and processor. Builds and maintains a materialized view which tracks the state of the Project aggregate", "Java, Spring, Axonframework");
         webComponent.uses(projectQuerySideComponent, "Read materialized view");
-        projectQuerySideComponent.uses(database, "Subscribes to event store and write materialized view");
+        projectQuerySideComponent.uses(eventSore, "Subscribes to events","SQL",InteractionStyle.Asynchronous);
+        projectQuerySideComponent.uses(database, "Write materialized views by handling the events", "SQL",InteractionStyle.Synchronous);
         projectQuerySideComponent.setUrl("https://github.com/ivans-innovation-lab/my-company-project-materialized-view");
 
         Component blogPostQuerySideComponent = webApplication.addComponent("Blog Post Query Side Component" , "Event-listener and processor. Builds and maintains a materialized view which tracks the state of the Blog aggregate", "Java, Spring, Axonframework");
         webComponent.uses(blogPostQuerySideComponent, "Read materialized view");
-        blogPostQuerySideComponent.uses(database, "Subscribes to event store and write materialized view");
+        blogPostQuerySideComponent.uses(eventSore, "Subscribes to events","SQL",InteractionStyle.Asynchronous);
+        blogPostQuerySideComponent.uses(database, "Write materialized views by handling the events", "SQL",InteractionStyle.Synchronous);
         blogPostQuerySideComponent.setUrl("https://github.com/ivans-innovation-lab/my-company-blog-materialized-view");
 
-        // ## Create views ##
+        // # Views #
         ViewSet views = workspace.getViews();
-        // ### Static context view ###
+
+        // ## Static context view ##
         SystemContextView contextView = views.createSystemContextView(mySoftwareSystem, "Context", "The System Context diagram for the 'my-company' application");
         contextView.addAllElements();
-        // ### Static container view ###
+        // ## Static container view ##
         ContainerView containerView = views.createContainerView(mySoftwareSystem, "Containers", "The Containers diagram for the 'my-company' application");
         containerView.addAllElements();
-        // ### Static component view ###
+        // ## Static component view ##
         ComponentView componentView = views.createComponentView(webApplication,"Components", "The Components diagram for the 'my-company' application");
         componentView.addAllElements();
-        
 
 
-        
-        // ## Styles ##
+        // ## Dynamic view - Create/Publish Blog post ##
+        DynamicView dynamicViewCreateBlog = views.createDynamicView(webApplication, "Create Blog/Publish post", "This diagram shows what happens when a user creates/publishes a blog post.");
+        dynamicViewCreateBlog.add(user, webComponent);
+        dynamicViewCreateBlog.add(webComponent, blogPostCommandSideComponent);
+        dynamicViewCreateBlog.add(blogPostCommandSideComponent, eventSore);
+        dynamicViewCreateBlog.add(blogPostQuerySideComponent, eventSore);
+        dynamicViewCreateBlog.add(blogPostQuerySideComponent, database);
+
+        // ## Dynamic view - Create/Publish Blog post ##
+        DynamicView dynamicViewCreateProject = views.createDynamicView(webApplication, "Create Project", "This diagram shows what happens when a user creates a new project.");
+        dynamicViewCreateProject.add(user, webComponent);
+        dynamicViewCreateProject.add(webComponent, projectCommandSideComponent);
+        dynamicViewCreateProject.add(projectCommandSideComponent, eventSore);
+        dynamicViewCreateProject.add(projectQuerySideComponent, eventSore);
+        dynamicViewCreateProject.add(projectQuerySideComponent, database);
+
+
+        // # Styles #
         Styles styles = views.getConfiguration().getStyles();
         styles.addElementStyle(Tags.ELEMENT).color("#000000");
         styles.addElementStyle(Tags.PERSON).background("#ffbf00").shape(Shape.Person);
@@ -108,7 +134,6 @@ public class DocumentationApplication {
         styles.addElementStyle(MONOLITH_TAG).shape(Shape.Hexagon);
         styles.addElementStyle(DATASTORE_TAG).background("#f5da81").shape(Shape.Cylinder);
         styles.addRelationshipStyle(Tags.RELATIONSHIP).routing(Routing.Orthogonal);
-
         styles.addRelationshipStyle(Tags.ASYNCHRONOUS).dashed(true);
         styles.addRelationshipStyle(Tags.SYNCHRONOUS).dashed(false);
 
@@ -123,7 +148,5 @@ public class DocumentationApplication {
         structurizrClient.setMergeFromRemote(true);
         structurizrClient.putWorkspace(workspaceId, workspace);
     }
-    
-    
 
 }
