@@ -36,7 +36,7 @@ public class DocumentationApplication {
      * @param args
      * @throws Exception
      */
-    public static void main(String[] args) throws Exception {
+    public static void main(String... args) throws Exception {
         SpringApplication app = new SpringApplication(DocumentationApplication.class);
         Environment env = app.run(args).getEnvironment();
         // # Workspace #
@@ -46,9 +46,12 @@ public class DocumentationApplication {
         SoftwareSystem mySoftwareSystem = model.addSoftwareSystem("My Company Information System", "An enterprise application that enables users to manage blog posts, project information, customers and other data");
         mySoftwareSystem.setLocation(Location.Internal);
         Person user = model.addPerson("User", "A user");
+        SoftwareSystem clientsystem = model.addSoftwareSystem("Client System", "A partner system that consumes REST API");
+        
         user.uses(mySoftwareSystem, "Uses");
+        clientsystem.uses(mySoftwareSystem, "Uses");
         // ## UI  ##
-        Container uiApplication = mySoftwareSystem.addContainer("UI Application", "A user interface that allows users to manage their profile, blogs and projects via web browser", "JavaScript, HTML, Angular4");
+        Container uiApplication = mySoftwareSystem.addContainer("UI Application", "A user interface that allows users to manage their profile, blogs and projects via web browser", "JavaScript, HTML, Angular5+");
         uiApplication.setUrl("https://github.com/ivans-innovation-lab/my-company-angular-fe");
         user.uses(uiApplication, "Uses");
         // ## API  ##
@@ -56,6 +59,7 @@ public class DocumentationApplication {
             webApplication.setUrl("https://github.com/ivans-innovation-lab/my-company-monolith");
         webApplication.addTags(MONOLITH_TAG);
         uiApplication.uses(webApplication, "Consume");
+        clientsystem.uses(webApplication, "Uses");
         // ## DB ##
         Container database = mySoftwareSystem.addContainer("Database", "Stores materialized vies.", "Relational database");
         database.addTags(DATASTORE_TAG);
@@ -69,7 +73,8 @@ public class DocumentationApplication {
 
         // # Components #
         Component webComponent = webApplication.addComponent("Web Component", "Exposes a REST API on top of command gateway and materialized views", "HTTP, Java, Spring Data Rest");
-        user.uses(webComponent, "Uses");
+       // user.uses(webComponent, "Uses");
+        clientsystem.uses(webComponent, "Uses");
         uiApplication.uses(webComponent, "Uses");
         webComponent.setUrl("https://github.com/ivans-innovation-lab/my-company-monolith/tree/master/src/main/java/com/idugalic");
 
@@ -82,6 +87,11 @@ public class DocumentationApplication {
         webComponent.uses(blogPostCommandSideComponent, "Send commands");
         blogPostCommandSideComponent.setUrl("https://github.com/ivans-innovation-lab/my-company-blog-domain");
         blogPostCommandSideComponent.uses(eventSore, "Triggers/Persists events");
+        
+        Component teamCommandSideComponent = webApplication.addComponent("Team Command Side Component" , "Processes commands and persists and propagates Events", "Java, Spring, Axonframework");
+        webComponent.uses(teamCommandSideComponent, "Send commands");
+        teamCommandSideComponent.setUrl("https://github.com/ivans-innovation-lab/my-company-team-domain");
+        teamCommandSideComponent.uses(eventSore, "Triggers/Persists events");
 
         Component projectQuerySideComponent = webApplication.addComponent("Project Query Side Component" , "Event-listener and processor. Builds and maintains a materialized view which tracks the state of the Project aggregate", "Java, Spring, Axonframework");
         webComponent.uses(projectQuerySideComponent, "Read materialized view");
@@ -94,6 +104,12 @@ public class DocumentationApplication {
         blogPostQuerySideComponent.uses(eventSore, "Subscribes to events","SQL",InteractionStyle.Asynchronous);
         blogPostQuerySideComponent.uses(database, "Write materialized views by handling the events / Query by user", "SQL",InteractionStyle.Synchronous);
         blogPostQuerySideComponent.setUrl("https://github.com/ivans-innovation-lab/my-company-blog-materialized-view");
+
+        Component teamQuerySideComponent = webApplication.addComponent("Team Query Side Component" , "Event-listener and processor. Builds and maintains a materialized view which tracks the state of the Team aggregate", "Java, Spring, Axonframework");
+        webComponent.uses(teamQuerySideComponent, "Read materialized view");
+        teamQuerySideComponent.uses(eventSore, "Subscribes to events","SQL",InteractionStyle.Asynchronous);
+        teamQuerySideComponent.uses(database, "Write materialized views by handling the events / Query by user", "SQL",InteractionStyle.Synchronous);
+        teamQuerySideComponent.setUrl("https://github.com/ivans-innovation-lab/my-company-team-materialized-view");
 
         // # Views #
         ViewSet views = workspace.getViews();
@@ -111,7 +127,7 @@ public class DocumentationApplication {
 
         // ## Dynamic view - Create/Publish Blog post ##
         DynamicView dynamicViewCreateBlog = views.createDynamicView(webApplication, "Create Blog/Publish post", "This diagram shows what happens when a user creates/publishes a blog post.");
-        dynamicViewCreateBlog.add(user, webComponent);
+        dynamicViewCreateBlog.add(uiApplication, webComponent);
         dynamicViewCreateBlog.add(webComponent, blogPostCommandSideComponent);
         dynamicViewCreateBlog.add(blogPostCommandSideComponent, eventSore);
         dynamicViewCreateBlog.add(blogPostQuerySideComponent, eventSore);
@@ -119,7 +135,7 @@ public class DocumentationApplication {
 
         // ## Dynamic view - Create/Publish Blog post ##
         DynamicView dynamicViewCreateProject = views.createDynamicView(webApplication, "Create Project", "This diagram shows what happens when a user creates a new project.");
-        dynamicViewCreateProject.add(user, webComponent);
+        dynamicViewCreateProject.add(uiApplication, webComponent);
         dynamicViewCreateProject.add(webComponent, projectCommandSideComponent);
         dynamicViewCreateProject.add(projectCommandSideComponent, eventSore);
         dynamicViewCreateProject.add(projectQuerySideComponent, eventSore);
